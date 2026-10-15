@@ -317,7 +317,7 @@ with queue_tab:
             fig, ax = plt.subplots(figsize=(7, 3))
             sns.barplot(x=list(probability_dict.values()), y=list(probability_dict.keys()), ax=ax)
             ax.set_xlim(0, 1)
-            ax.set_xlabel("Calibrated class probability")
+            ax.set_xlabel("Model class probability")
             ax.set_ylabel("")
             fig.tight_layout()
             st.pyplot(fig)
