@@ -13,6 +13,7 @@ import seaborn as sns
 import streamlit as st
 
 from aegis_app_logic import initialize_feedback_db, read_feedback, save_feedback, score_input
+from aegis_catboost_logic import score_input_catboost
 
 @st.cache_data(show_spinner="Scoring incidents...")
 def cached_score_input(
@@ -22,6 +23,8 @@ def cached_score_input(
     model_version: str,
 ):
     """Reuse incident predictions until the input or model version changes."""
+    if metadata.get("model_family") == "catboost_row_level":
+        return score_input_catboost(raw_df, _pipeline, metadata)
     return score_input(raw_df, _pipeline, metadata)
 
 
@@ -29,6 +32,8 @@ def cached_score_input(
 ROOT = Path(__file__).resolve().parent
 MODEL_PATH = ROOT / "models" / "aegis_ir_pipeline.joblib"
 META_PATH = ROOT / "models" / "model_metadata.json"
+CATBOOST_MODEL_PATH = ROOT / "models" / "aegis_ir_candidate_g.cbm"
+CATBOOST_META_PATH = ROOT / "models" / "catboost_candidate_g_metadata.json"
 DEMO_PATH = ROOT / "demo_queue.csv"
 DB_PATH = ROOT / "analyst_feedback.db"
 
@@ -47,6 +52,16 @@ def load_model(path_string: str, modified_time: float):
     if not path.exists():
         return None
     return joblib.load(path)
+
+
+@st.cache_resource
+def load_catboost_model(path_string: str, modified_time: float):
+    """Load the optional Candidate G CatBoost model."""
+    del modified_time
+    from catboost import CatBoostClassifier
+    model = CatBoostClassifier()
+    model.load_model(path_string)
+    return model
 
 
 @st.cache_data
@@ -150,15 +165,52 @@ def local_shap_explanation(pipeline, reference_features: pd.DataFrame, row: pd.D
 
 
 initialize_feedback_db(DB_PATH)
-pipeline = load_model(str(MODEL_PATH), MODEL_PATH.stat().st_mtime if MODEL_PATH.exists() else 0.0)
-metadata = load_metadata(str(META_PATH), META_PATH.stat().st_mtime if META_PATH.exists() else 0.0)
+
+# Candidate G is preferred when its optional model artifact and metadata are
+# present and load successfully. The original Random Forest remains a fallback.
+model_load_warning = None
+pipeline = None
+metadata = None
+
+if CATBOOST_MODEL_PATH.exists() and CATBOOST_META_PATH.exists():
+    try:
+        pipeline = load_catboost_model(
+            str(CATBOOST_MODEL_PATH), CATBOOST_MODEL_PATH.stat().st_mtime
+        )
+        metadata = load_metadata(
+            str(CATBOOST_META_PATH), CATBOOST_META_PATH.stat().st_mtime
+        )
+        if not metadata or metadata.get("model_family") != "catboost_row_level":
+            raise ValueError("Candidate G metadata has the wrong model_family.")
+    except Exception as exc:
+        model_load_warning = (
+            f"Candidate G could not be loaded ({exc}). Falling back to Random Forest."
+        )
+        pipeline = None
+        metadata = None
+
+if pipeline is None or metadata is None:
+    pipeline = load_model(
+        str(MODEL_PATH), MODEL_PATH.stat().st_mtime if MODEL_PATH.exists() else 0.0
+    )
+    metadata = load_metadata(
+        str(META_PATH), META_PATH.stat().st_mtime if META_PATH.exists() else 0.0
+    )
 
 st.title("🛡️ ORION TRIAGE")
 st.caption("Evidence-grounded, human-supervised incident triage decision support")
 
+if model_load_warning:
+    st.warning(model_load_warning)
+
 if pipeline is None or metadata is None:
-    st.error("Model artifacts are missing. Run `python train_aegis_ir.py --dataset guide_sample.csv` first.")
+    st.error(
+        "No compatible model artifacts were found. Restore the Random Forest artifacts "
+        "or install CatBoost and place Candidate G model and metadata in the documented paths."
+    )
     st.stop()
+
+st.caption(f"Active model: {metadata.get('winning_model_name', 'unknown')} · Version: {metadata.get('model_version', 'unknown')}")
 
 with st.sidebar:
     st.header("Control Panel")
@@ -252,7 +304,13 @@ with queue_tab:
         with left:
             st.subheader(f"Incident {selected_incident}")
             feature_cols = metadata["feature_columns"]
-            st.markdown("**Aggregated model inputs**")
+            if metadata.get("model_family") == "catboost_row_level":
+                st.markdown(
+                    "**Incident-level summary** — categorical values below are deterministic "
+                    "modes across all source rows; Candidate G scores up to four sampled source rows."
+                )
+            else:
+                st.markdown("**Aggregated model inputs**")
             st.json({key: (None if pd.isna(record[key]) else record[key].item() if isinstance(record[key], np.generic) else record[key]) for key in feature_cols if key in record})
 
             probability_dict = {cls: float(record[f"Prob_{cls}"]) for cls in metadata["class_order"]}
@@ -272,7 +330,13 @@ with queue_tab:
             }, sort_keys=True)
             record_signature = hashlib.sha256(signature_payload.encode("utf-8")).hexdigest()[:10]
             shap_state_key = f"shap_result_{incident_hash}_{record_signature}"
-            if st.button("Calculate local SHAP explanation", key=f"shap_button_{incident_hash}_{record_signature}"):
+            if metadata.get("model_family") == "catboost_row_level":
+                st.info(
+                    "Local SHAP is not enabled for Candidate G yet: the current explanation "
+                    "helper is designed for the aggregated Random Forest input, not the "
+                    "row-level probability-averaging model."
+                )
+            if metadata.get("model_family") != "catboost_row_level" and st.button("Calculate local SHAP explanation", key=f"shap_button_{incident_hash}_{record_signature}"):
                 with st.spinner("Computing a model-agnostic explanation; this may take a moment..."):
                     try:
                         st.session_state[shap_state_key] = local_shap_explanation(
@@ -288,7 +352,7 @@ with queue_tab:
                         st.warning("SHAP is not installed. Install requirements.txt to enable explanations.")
                     except Exception as exc:
                         st.warning(f"SHAP explanation could not be computed for this row: {exc}")
-            if shap_state_key in st.session_state:
+            if metadata.get("model_family") != "catboost_row_level" and shap_state_key in st.session_state:
                 st.caption("Positive values push the explained class probability upward relative to the explainer's background; they are not causal effects.")
                 top = st.session_state[shap_state_key].head(15).sort_values("SHAP contribution")
                 fig, ax = plt.subplots(figsize=(8, max(3, 0.28 * len(top))))
