@@ -1,0 +1,180 @@
+{
+  "project": "ORION TRIAGE",
+  "model_version": "2026-10-12T17:19:37+00:00",
+  "winning_model_name": "Random Forest",
+  "target_col": "IncidentGrade",
+  "group_col": "IncidentKey",
+  "class_order": [
+    "BenignPositive",
+    "FalsePositive",
+    "TruePositive"
+  ],
+  "numeric_features": [
+    "Url",
+    "AccountSid",
+    "AccountUpn",
+    "AccountName",
+    "DeviceName",
+    "NetworkMessageId",
+    "EmailClusterId",
+    "RegistryKey",
+    "RegistryValueName",
+    "RegistryValueData",
+    "ApplicationId",
+    "ApplicationName",
+    "OAuthApplicationId",
+    "FileName",
+    "FolderPath",
+    "ResourceIdName",
+    "OSVersion",
+    "CountryCode",
+    "State",
+    "City",
+    "AegisSourceRowCount",
+    "AegisUniqueAlertCount",
+    "AegisUniqueDetectorCount"
+  ],
+  "categorical_features": [
+    "DetectorId",
+    "AlertTitle",
+    "Category",
+    "MitreTechniques",
+    "EntityType",
+    "EvidenceRole",
+    "ThreatFamily",
+    "ResourceType",
+    "Roles",
+    "OSFamily",
+    "AntispamDirection",
+    "SuspicionLevel"
+  ],
+  "feature_columns": [
+    "Url",
+    "AccountSid",
+    "AccountUpn",
+    "AccountName",
+    "DeviceName",
+    "NetworkMessageId",
+    "EmailClusterId",
+    "RegistryKey",
+    "RegistryValueName",
+    "RegistryValueData",
+    "ApplicationId",
+    "ApplicationName",
+    "OAuthApplicationId",
+    "FileName",
+    "FolderPath",
+    "ResourceIdName",
+    "OSVersion",
+    "CountryCode",
+    "State",
+    "City",
+    "AegisSourceRowCount",
+    "AegisUniqueAlertCount",
+    "AegisUniqueDetectorCount",
+    "DetectorId",
+    "AlertTitle",
+    "Category",
+    "MitreTechniques",
+    "EntityType",
+    "EvidenceRole",
+    "ThreatFamily",
+    "ResourceType",
+    "Roles",
+    "OSFamily",
+    "AntispamDirection",
+    "SuspicionLevel"
+  ],
+  "excluded_columns": [
+    "Id",
+    "OrgId",
+    "IncidentId",
+    "AlertId",
+    "Timestamp",
+    "IncidentGrade",
+    "ActionGrouped",
+    "ActionGranular",
+    "DeviceId",
+    "Sha256",
+    "IpAddress",
+    "AccountObjectId",
+    "LastVerdict",
+    "IncidentKey"
+  ],
+  "aggregation_policy": {
+    "prediction_unit": "incident",
+    "numeric": "median across source rows per incident",
+    "categorical": "deterministic mode across source rows per incident"
+  },
+  "max_categories_per_categorical_feature": 20,
+  "cv_benchmarks": {
+    "Logistic Regression": {
+      "Accuracy": 0.5886250000000001,
+      "Macro F1": 0.5777690550988256,
+      "Macro Precision": 0.5850517740801797,
+      "Macro Recall": 0.595270304914939,
+      "Macro F1 Std": 0.009163380897944154
+    },
+    "Random Forest": {
+      "Accuracy": 0.671875,
+      "Macro F1": 0.6409875052852806,
+      "Macro Precision": 0.6522381185562312,
+      "Macro Recall": 0.6363249464004825,
+      "Macro F1 Std": 0.006541113124084451
+    },
+    "Hist Gradient Boosting": {
+      "Accuracy": 0.638625,
+      "Macro F1": 0.6230134422449499,
+      "Macro Precision": 0.625817205480206,
+      "Macro Recall": 0.633664338044956,
+      "Macro F1 Std": 0.011070483552401013
+    }
+  },
+  "test_metrics": {
+    "accuracy": 0.6845,
+    "macro_f1": 0.6422504851005836,
+    "macro_precision": 0.6639780864740333,
+    "macro_recall": 0.6309779180878993,
+    "roc_auc_ovr_macro": 0.8178023423526347,
+    "test_incidents": 2000
+  },
+  "threshold_analysis": {
+    "0.5": {
+      "coverage": 0.845,
+      "review_rate": 0.155,
+      "accepted_accuracy": 0.7349112426035503,
+      "accepted_count": 1690
+    },
+    "0.6": {
+      "coverage": 0.7245,
+      "review_rate": 0.2755,
+      "accepted_accuracy": 0.7688060731538993,
+      "accepted_count": 1449
+    },
+    "0.65": {
+      "coverage": 0.645,
+      "review_rate": 0.355,
+      "accepted_accuracy": 0.7922480620155039,
+      "accepted_count": 1290
+    },
+    "0.7": {
+      "coverage": 0.503,
+      "review_rate": 0.497,
+      "accepted_accuracy": 0.8290258449304175,
+      "accepted_count": 1006
+    },
+    "0.8": {
+      "coverage": 0.2055,
+      "review_rate": 0.7945,
+      "accepted_accuracy": 0.878345498783455,
+      "accepted_count": 411
+    },
+    "0.9": {
+      "coverage": 0.0,
+      "review_rate": 1.0,
+      "accepted_accuracy": null,
+      "accepted_count": 0
+    }
+  },
+  "source_dataset_name": "guide_sample.csv"
+}
