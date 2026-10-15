@@ -12,3 +12,6 @@ demo_queue.csv
 data/
 .ipynb_checkpoints/
 .DS_Store
+
+# Locally downloaded model artifact; not committed to Git.
+models/aegis_ir_candidate_g.cbm
