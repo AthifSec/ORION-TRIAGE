@@ -17,24 +17,22 @@ incident-triage prototype built using the Microsoft GUIDE dataset.
 
 Python, pandas, NumPy, scikit-learn, Streamlit, joblib, and SHAP.
 
-## Evaluation of the bundled application model
+## Model versions and evaluation
 
-The currently bundled application uses the **Random Forest** pipeline.
-These figures are taken from that model's saved metadata and should not
-be confused with the separate, newer CatBoost experiment.
+The repository's original **Random Forest** remains the fallback model. Its bundled metadata records the following held-out scores:
 
-| Metric | Held-out test result |
+| Metric | Random Forest result |
 |---|---:|
 | Accuracy | 68.45% |
 | Macro F1 | 64.23% |
 | Macro precision | 66.40% |
 | Macro recall | 63.10% |
 | Macro ROC AUC (one-vs-rest) | 81.78% |
-| Test incidents | 2000 |
+| Test incidents | 2,000 |
 
-The separate CatBoost candidate has not been integrated into this app.
-Its evaluation results are not presented as the performance of the
-bundled application model.
+This branch adds optional **CatBoost Candidate G** support. When its local `.cbm` artifact and metadata are available and load successfully, the app prefers Candidate G. Otherwise it keeps using Random Forest. Candidate G was evaluated on 5,918 held-out incidents under its stable per-incident sampling policy: accuracy 81.02%, macro F1 0.7799, macro precision 82.45%, macro recall 0.7577, and macro ROC-AUC (OvR) 92.89%. These Candidate G figures belong to that specific model and sampling policy, not the fallback Random Forest.
+
+See [Candidate G integration instructions](CANDIDATE_G_INTEGRATION.md) for model placement, optional dependency, testing, sampling policy, and SHAP limitations.
 
 ## Run locally
 
